@@ -1,0 +1,26 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# next
+.next/
+out/
+next-env.d.ts
+
+# build output
+dist/
+*.tsbuildinfo
+
+# env (solo se versiona .env.example)
+.env*
+!.env.example
+
+# logs / os / editor
+*.log
+npm-debug.log*
+.DS_Store
+.vscode/
+.idea/
+
+# railway local
+.railway/.cache/

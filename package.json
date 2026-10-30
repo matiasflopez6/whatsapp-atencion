@@ -1,0 +1,52 @@
+{
+  "name": "whatsapp-atencion",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "packageManager": "pnpm@10.28.0",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build && cp -r public .next/standalone/ && cp -r .next/static .next/standalone/.next/",
+    "build:scripts": "esbuild scripts/reprocess-webhooks.ts --bundle --platform=node --format=esm --packages=external --alias:@=. --outdir=dist/scripts",
+    "start": "HOSTNAME=${HOSTNAME:-0.0.0.0} node .next/standalone/server.js",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:seed": "tsx --env-file-if-exists=.env.local db/seed.ts",
+    "cron:reprocess": "tsx --env-file-if-exists=.env.local scripts/reprocess-webhooks.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "@phosphor-icons/react": "^2.1.10",
+    "better-auth": "^1.7.14",
+    "drizzle-orm": "^0.45.4",
+    "next": "16.2.6",
+    "pg": "^8.23.1",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "server-only": "^0.0.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/node": "^22.19.0",
+    "@types/pg": "^8.15.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "drizzle-kit": "^0.31.11",
+    "esbuild": "^0.25.0",
+    "eslint": "^9.39.0",
+    "eslint-config-next": "16.2.6",
+    "tailwindcss": "^4.3.3",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  }
+}

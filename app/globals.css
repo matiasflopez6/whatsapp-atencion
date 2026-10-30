@@ -1,0 +1,53 @@
+@import "tailwindcss";
+
+/*
+ * Tokens de diseño. Fondo claro, grises neutros y UN solo color de acento (--color-accent).
+ * Úsalos con clases de Tailwind: bg-surface, text-ink, border-line, bg-accent, etc.
+ */
+@theme {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --color-canvas: #f7f7f6;
+  --color-surface: #ffffff;
+  --color-subtle: #f1f1ef;
+  --color-line: #e4e4e0;
+  --color-line-strong: #d0d0ca;
+
+  --color-ink: #111111;
+  --color-ink-2: #3f3f3b;
+  --color-ink-3: #6b6b65;
+  --color-ink-4: #9a9a93;
+
+  --color-accent: #0f766e;
+  --color-accent-hover: #0b5f58;
+  --color-accent-soft: #e6f2f0;
+  --color-accent-ink: #0a4d47;
+
+  /* Estados semánticos (solo para badges de estado) */
+  --color-danger: #b42318;
+  --color-danger-soft: #fdecea;
+  --color-warn: #9a5b00;
+  --color-warn-soft: #fff4de;
+
+  --radius-control: 0.5rem;
+  --radius-panel: 0.75rem;
+}
+
+@layer base {
+  html {
+    color-scheme: light;
+  }
+  body {
+    background: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+}
