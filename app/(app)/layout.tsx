@@ -1,10 +1,12 @@
 import { Sidebar } from "@/components/sidebar";
+import { RealtimeProvider } from "@/lib/realtime/use-realtime";
 import { requireSession } from "@/lib/session";
 import { logoutAction } from "../(auth)/actions";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await requireSession();
   return (
+    <RealtimeProvider>
     <div className="flex min-h-dvh flex-col md:flex-row">
       <Sidebar
         organizationName={session.organization.name}
@@ -16,5 +18,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <div className="mx-auto max-w-6xl space-y-6">{children}</div>
       </main>
     </div>
+    </RealtimeProvider>
   );
 }
