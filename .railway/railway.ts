@@ -46,7 +46,8 @@ export default defineRailway((ctx) => {
   const cron = service("cron-reprocess", {
     source: github(REPO, { branch: "main" }),
     build: "pnpm build:scripts",
-    start: "pnpm cron:reprocess",
+    // Bundle de `pnpm build:scripts` (esbuild, ESM): evita cargar tsx en producción.
+    start: "node dist/scripts/reprocess-webhooks.js",
     deploy: { cronSchedule: "*/5 * * * *" },
     env: common,
   });

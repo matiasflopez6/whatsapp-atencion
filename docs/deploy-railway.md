@@ -61,11 +61,11 @@ Railway → Project → *Settings → Shared Variables* (seleccionar el entorno)
 | Servicio | Build | Pre-deploy | Start | Extra |
 |---|---|---|---|---|
 | `web` | `pnpm build` (`next build` + copia de `public` y `.next/static` a `.next/standalone`) | `pnpm db:migrate` | `node .next/standalone/server.js` | healthcheck `/api/health`, escucha `0.0.0.0:$PORT` |
-| `cron-reprocess` | `pnpm build:scripts` | — | `pnpm cron:reprocess` | `cronSchedule: */5 * * * *` (UTC, mínimo 5 min) |
+| `cron-reprocess` | `pnpm build:scripts` (esbuild → `dist/scripts/`) | — | `node dist/scripts/reprocess-webhooks.js` | `cronSchedule: */5 * * * *` (UTC, mínimo 5 min) |
 | `Postgres` | imagen oficial `postgres-ssl:18` | — | — | solo red privada |
 
 - **Cron**: el proceso debe cerrar el pool de `pg` y terminar. Si una ejecución sigue `Active` cuando toca la siguiente,
-  Railway la salta, por eso `scripts/reprocess-webhooks.ts` debe acotar su duración y salir siempre (también ante error).
+  Railway la salta, por eso `scripts/reprocess-webhooks.ts` acota su duración (presupuesto de 4 min), cierra el pool y sale siempre (también ante error). En local sigue existiendo `pnpm cron:reprocess` (tsx).
   Probar a mano: `railway cron run --service cron-reprocess`; historial: `railway cron list`.
 - Si Railpack detecta mal Node, fijar `RAILPACK_NODE_VERSION` en las variables del servicio.
 - Migraciones: el pre-deploy corre en un contenedor aparte; no depende de volúmenes ni de la app arrancada.
