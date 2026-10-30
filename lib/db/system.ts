@@ -10,7 +10,9 @@ import type { Organization, Profile } from "@/db/types";
  *   1. Healthcheck.
  *   2. Resolver la organización de un usuario autenticado (profiles) y crearla en el signup.
  *   3. Resolver la organización a partir de `phone_number_id` en el webhook.
- *   4. (hilo del cron) leer/reclamar webhook_events pendientes antes de entrar a withTenant().
+ *   4. Cron de reproceso: reclamar webhook_events pendientes/atascados antes de entrar a withTenant().
+ *   5. Webhook de WhatsApp: verificar `hub.verify_token` (GET) y leer el App Secret del número para
+ *      validar la firma (POST) ANTES de saber a qué organización pertenece la petición.
  */
 
 export async function pingDatabase(): Promise<void> {
@@ -96,4 +98,67 @@ export async function resolveOrganizationByPhoneNumberId(phoneNumberId: string):
     .where(and(eq(whatsappConfigs.phoneNumberId, phoneNumberId)))
     .limit(1);
   return row?.organizationId ?? null;
+}
+
+export type WebhookConfig = { organizationId: string; appSecretEncrypted: string };
+
+/** 5. Secreto (cifrado) con el que se firma el webhook de este número. */
+export async function getWebhookConfigByPhoneNumberId(phoneNumberId: string): Promise<WebhookConfig | null> {
+  const [row] = await db
+    .select({ organizationId: whatsappConfigs.organizationId, appSecretEncrypted: whatsappConfigs.appSecretEncrypted })
+    .from(whatsappConfigs)
+    .where(eq(whatsappConfigs.phoneNumberId, phoneNumberId))
+    .limit(1);
+  return row ?? null;
+}
+
+/** 5. ¿Algún negocio tiene este token de verificación? (GET de suscripción del webhook). */
+export async function verifyTokenExists(token: string): Promise<boolean> {
+  const [row] = await db
+    .select({ organizationId: whatsappConfigs.organizationId })
+    .from(whatsappConfigs)
+    .where(eq(whatsappConfigs.verifyToken, token))
+    .limit(1);
+  return Boolean(row);
+}
+
+// ── 4. Cron de reproceso ───────────────────────────────────────────────────────────────────────
+
+export const MAX_WEBHOOK_ATTEMPTS = 5;
+
+/**
+ * Reclama eventos para reprocesar: `pending` con más de `graceSeconds` (deja margen a after()) o
+ * `processing` cuyo bloqueo caducó (proceso muerto por un redeploy). SKIP LOCKED permite varias
+ * instancias sin duplicar. Los que agotaron intentos pasan a `failed`.
+ */
+export async function claimWebhookEventsForReprocess(
+  limit: number,
+  opts: { graceSeconds: number; lockTimeoutSeconds: number } = { graceSeconds: 30, lockTimeoutSeconds: 300 },
+): Promise<{ id: string; organizationId: string }[]> {
+  await db.execute(sql`
+    update webhook_events
+       set status = 'failed', last_error = coalesce(last_error, 'Intentos agotados')
+     where attempts >= ${MAX_WEBHOOK_ATTEMPTS}
+       and (status = 'pending' or (status = 'processing' and locked_at < now() - make_interval(secs => ${opts.lockTimeoutSeconds})))`);
+  const result = await db.execute<{ id: string; organization_id: string }>(sql`
+    update webhook_events
+       set status = 'processing', locked_at = now(), attempts = attempts + 1
+     where id in (
+       select id from webhook_events
+        where (status = 'pending' and received_at < now() - make_interval(secs => ${opts.graceSeconds}))
+           or (status = 'processing' and locked_at < now() - make_interval(secs => ${opts.lockTimeoutSeconds}))
+        order by received_at
+        limit ${limit}
+        for update skip locked)
+    returning id, organization_id`);
+  return result.rows.map((r) => ({ id: r.id, organizationId: r.organization_id }));
+}
+
+/** Devuelve a `pending` los eventos reclamados que no llegaron a procesarse (no cuenta como intento). */
+export async function releaseWebhookEvents(ids: string[]): Promise<void> {
+  if (!ids.length) return;
+  await db.execute(sql`
+    update webhook_events
+       set status = 'pending', attempts = greatest(attempts - 1, 0), locked_at = null
+     where status = 'processing' and id in (${sql.join(ids.map((id) => sql`${id}::uuid`), sql`, `)})`);
 }

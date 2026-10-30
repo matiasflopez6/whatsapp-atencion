@@ -15,7 +15,8 @@ export const webhookEvents = pgTable(
       .default("pending"),
     attempts: integer("attempts").notNull().default(0),
     lastError: text("last_error"),
-    receivedAt: timestamp("received_at", { withTimezone: true }).defaultNow(),
+    lockedAt: timestamp("locked_at", { withTimezone: true }), // reclamo por after() o por el cron
+  receivedAt: timestamp("received_at", { withTimezone: true }).defaultNow(),
     processedAt: timestamp("processed_at", { withTimezone: true }),
   },
   (t) => [

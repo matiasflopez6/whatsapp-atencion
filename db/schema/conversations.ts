@@ -23,6 +23,7 @@ export const conversations = pgTable(
     organizationId: uuid("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
     contactId: uuid("contact_id").notNull().references(() => contacts.id, { onDelete: "cascade" }),
     botActive: boolean("bot_active").default(true), // toggle de handoff humano
+    handoffReason: text("handoff_reason"), // por qué el bot cedió la conversación (null si sigue activo)
     lastMessageAt: timestamp("last_message_at", { withTimezone: true }).defaultNow(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
   },
