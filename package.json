@@ -15,6 +15,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:seed": "tsx --env-file-if-exists=.env.local db/seed.ts",
+    "db:verify": "tsx --env-file-if-exists=.env.local db/verify-isolation.ts",
     "cron:reprocess": "tsx --env-file-if-exists=.env.local scripts/reprocess-webhooks.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint ."
