@@ -12,10 +12,12 @@ export default defineRailway((ctx) => {
   // Nombre con mayúscula inicial: las referencias `${{Postgres.*}}` distinguen mayúsculas.
   const db = postgres("Postgres");
 
-  // Variables que necesitan web y cron-reprocess.
+  // Variables que necesitan web y cron-reprocess. BETTER_AUTH_SECRET también: getEnv() (lib/env.ts) la
+  // valida y el cron ejecuta el agente, que la lee al procesar un mensaje.
   const common = {
     DATABASE_URL: db.env.DATABASE_URL, // red privada: postgres.railway.internal
     ENCRYPTION_KEY: ctx.shared.ENCRYPTION_KEY,
+    BETTER_AUTH_SECRET: ctx.shared.BETTER_AUTH_SECRET,
     ANTHROPIC_API_KEY: ctx.shared.ANTHROPIC_API_KEY,
     GOOGLE_CLIENT_ID: ctx.shared.GOOGLE_CLIENT_ID,
     GOOGLE_CLIENT_SECRET: ctx.shared.GOOGLE_CLIENT_SECRET,
@@ -30,7 +32,6 @@ export default defineRailway((ctx) => {
     healthcheckTimeout: 60,
     env: {
       ...common,
-      BETTER_AUTH_SECRET: ctx.shared.BETTER_AUTH_SECRET,
       HOSTNAME: "0.0.0.0",
       // Opcionales, solo cuando existan en el entorno (si no, la referencia queda sin resolver):
       // EMAIL_PROVIDER_API_KEY: ctx.shared.EMAIL_PROVIDER_API_KEY,
