@@ -211,7 +211,7 @@ function MonthView({ anchor, today, byDay, timeZone, onSelect, onOpenDay }: View
                 aria-label={`Ver semana del ${key}`}
                 className={cn(
                   "flex size-6 items-center justify-center rounded-full text-xs font-medium hover:bg-subtle",
-                  isToday ? "bg-accent text-white hover:bg-accent-hover" : inMonth ? "text-ink" : "text-ink-4",
+                  isToday ? "bg-accent text-on-accent hover:bg-accent-hover" : inMonth ? "text-ink" : "text-ink-4",
                 )}
               >
                 {day.day}
@@ -279,7 +279,7 @@ function WeekView({ anchor, today, byDay, timeZone, onSelect }: ViewProps) {
           {days.map((d, i) => (
             <div key={civilKey(d)} className="px-2 py-2 text-center text-xs font-medium text-ink-3">
               <span className="capitalize">{WEEKDAY_LABELS[i]}</span>{" "}
-              <span className={cn("ml-0.5 inline-flex size-6 items-center justify-center rounded-full text-sm", sameDay(d, today) ? "bg-accent text-white" : "text-ink")}>{d.day}</span>
+              <span className={cn("ml-0.5 inline-flex size-6 items-center justify-center rounded-full text-sm", sameDay(d, today) ? "bg-accent text-on-accent" : "text-ink")}>{d.day}</span>
             </div>
           ))}
         </div>

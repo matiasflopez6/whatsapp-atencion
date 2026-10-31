@@ -82,7 +82,7 @@ Tokens y secretos de terceros se guardan con `encrypt()` (AES-256-GCM, formato `
 
 ### UI
 
-Fondo claro, grises neutros y un único acento (`--color-accent`, teal). Tokens en `app/globals.css` (`@theme`): `bg-canvas`, `bg-surface`, `bg-subtle`, `border-line`, `text-ink` / `ink-2` / `ink-3`, `bg-accent`, `bg-accent-soft`. Iconos Phosphor (`@phosphor-icons/react/dist/ssr` en Server Components). Estados con `<Badge tone>`; páginas con `<PageHeader>`, `<Panel>` y `<EmptyState>`. Server Components por defecto; `"use client"` solo si hace falta.
+Fondo claro, grises neutros y un único acento (`--color-accent`, teal). Tokens en `app/globals.css` (`@theme`): `bg-canvas`, `bg-surface`, `bg-subtle`, `border-line`, `text-ink` / `ink-2` / `ink-3`, `bg-accent`, `bg-accent-soft`. Iconos Phosphor (`@phosphor-icons/react/dist/ssr` en Server Components). **Tema claro/oscuro**: los mismos tokens se redefinen en `app/globals.css` para el tema oscuro (bloque `prefers-color-scheme` + `:root[data-theme="dark"]`; los dos son idénticos a propósito). Sin preferencia manda el sistema; `<ThemeToggle>` (claro / sistema / oscuro, en la barra lateral y en las páginas públicas) guarda la elección en `localStorage` (por navegador, no por usuario) y un script en `app/layout.tsx` la aplica antes de pintar para evitar destellos. Usa `text-on-accent` / `text-on-danger` sobre fondos de acento o peligro (nunca `text-white`) y solo tokens, no colores fijos. Estados con `<Badge tone>`; páginas con `<PageHeader>`, `<Panel>` y `<EmptyState>`. Server Components por defecto; `"use client"` solo si hace falta.
 
 ## Decisiones técnicas
 

@@ -208,7 +208,7 @@ export function ChatPanel({ initialConversation, initialMessages, initialHasMore
                       "rounded-panel px-3 py-2 text-sm break-words whitespace-pre-wrap",
                       m.sender === "contact" && "border border-line bg-surface text-ink",
                       m.sender === "bot" && "bg-accent-soft text-accent-ink",
-                      m.sender === "human" && "bg-accent text-white",
+                      m.sender === "human" && "bg-accent text-on-accent",
                     )}
                   >
                     {m.content ?? <span className="italic opacity-70">(mensaje sin texto)</span>}

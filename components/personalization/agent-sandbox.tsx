@@ -67,7 +67,7 @@ export function AgentSandbox() {
               <div
                 className={cn(
                   "rounded-panel px-3 py-2 text-sm break-words whitespace-pre-wrap",
-                  turn.role === "user" ? "bg-accent text-white" : "border border-line bg-surface text-ink",
+                  turn.role === "user" ? "bg-accent text-on-accent" : "border border-line bg-surface text-ink",
                 )}
               >
                 {turn.content}

@@ -23,15 +23,70 @@
   --color-accent-hover: #0b5f58;
   --color-accent-soft: #e6f2f0;
   --color-accent-ink: #0a4d47;
+  --color-on-accent: #ffffff;
 
   /* Estados semánticos (solo para badges de estado) */
   --color-danger: #b42318;
+  --color-on-danger: #ffffff;
   --color-danger-soft: #fdecea;
   --color-warn: #9a5b00;
   --color-warn-soft: #fff4de;
 
   --radius-control: 0.5rem;
   --radius-panel: 0.75rem;
+}
+
+/*
+ * Tema oscuro: se redefinen los mismos tokens (las utilidades de Tailwind usan var(--color-*)).
+ * Sin preferencia guardada manda el sistema (prefers-color-scheme); `data-theme` en <html> la fija
+ * (lo escribe el script de app/layout.tsx antes de pintar y components/theme-toggle.tsx).
+ * Los dos bloques son idénticos a propósito: CSS no permite compartirlos entre @media y un selector.
+ */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --color-canvas: #0d0f0e;
+    --color-surface: #161918;
+    --color-subtle: #202422;
+    --color-line: #2a2e2c;
+    --color-line-strong: #3b403d;
+    --color-ink: #eceeed;
+    --color-ink-2: #c8ccc9;
+    --color-ink-3: #9aa09c;
+    --color-ink-4: #6c726e;
+    --color-accent: #2bb5a6;
+    --color-accent-hover: #4ccfc0;
+    --color-accent-soft: #11302d;
+    --color-accent-ink: #6fe0d2;
+    --color-on-accent: #04201d;
+    --color-danger: #f0766b;
+    --color-on-danger: #2a0a07;
+    --color-danger-soft: #3b1815;
+    --color-warn: #f2b84b;
+    --color-warn-soft: #32260c;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --color-canvas: #0d0f0e;
+  --color-surface: #161918;
+  --color-subtle: #202422;
+  --color-line: #2a2e2c;
+  --color-line-strong: #3b403d;
+  --color-ink: #eceeed;
+  --color-ink-2: #c8ccc9;
+  --color-ink-3: #9aa09c;
+  --color-ink-4: #6c726e;
+  --color-accent: #2bb5a6;
+  --color-accent-hover: #4ccfc0;
+  --color-accent-soft: #11302d;
+  --color-accent-ink: #6fe0d2;
+  --color-on-accent: #04201d;
+  --color-danger: #f0766b;
+  --color-on-danger: #2a0a07;
+  --color-danger-soft: #3b1815;
+  --color-warn: #f2b84b;
+  --color-warn-soft: #32260c;
 }
 
 @layer base {
