@@ -2,7 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { auth } from "@/lib/auth";
+import { getAuth } from "@/lib/auth";
 import { ensureOrganizationForUser, getUserOrganization } from "@/lib/db/system";
 import type { Organization } from "@/db/types";
 
@@ -19,7 +19,9 @@ export type AppSession = {
  * el panel. Memoizada por petición.
  */
 export const getSession = cache(async (): Promise<AppSession | null> => {
-  const result = await auth.api.getSession({ headers: await headers() });
+  // headers() primero: marca la página como dinámica antes de que getAuth() lea variables de runtime.
+  const requestHeaders = await headers();
+  const result = await getAuth().api.getSession({ headers: requestHeaders });
   if (!result) return null;
   const { user } = result;
 
