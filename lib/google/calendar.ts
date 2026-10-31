@@ -62,6 +62,17 @@ export async function getCalendarConfig(organizationId: string): Promise<Calenda
   }
 }
 
+/** Error HTTP de la API de Google Calendar (conserva el estado para distinguir 404/410: evento ya borrado). */
+export class GoogleApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+    this.name = "GoogleApiError";
+  }
+}
+
 async function api<T>(accessToken: string, path: string, init?: { method: string; body?: unknown }): Promise<T> {
   const response = await fetch(`${API}${path}`, {
     method: init?.method ?? "GET",
@@ -71,7 +82,7 @@ async function api<T>(accessToken: string, path: string, init?: { method: string
   });
   if (response.status === 204) return undefined as T;
   const json = (await response.json().catch(() => ({}))) as T & { error?: { message?: string } };
-  if (!response.ok) throw new Error(`Google Calendar ${response.status}: ${json.error?.message ?? "error"}`);
+  if (!response.ok) throw new GoogleApiError(`Google Calendar ${response.status}: ${json.error?.message ?? "error"}`, response.status);
   return json;
 }
 
@@ -102,6 +113,24 @@ export async function insertEvent(organizationId: string, event: NewEvent): Prom
     },
   });
   return { id: created.id };
+}
+
+/**
+ * Cancela o restaura un evento sin borrarlo (`status` del evento): la cita cancelada desde el panel
+ * desaparece del calendario pero puede reactivarse. Si el evento ya no existe (404/410) en una
+ * cancelación se da por hecho; al restaurar sí es un error.
+ */
+export async function setEventStatus(organizationId: string, eventId: string, status: "confirmed" | "cancelled"): Promise<void> {
+  const { calendarId, accessToken } = await getCalendarConfig(organizationId);
+  try {
+    await api(accessToken, `/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}`, {
+      method: "PATCH",
+      body: { status },
+    });
+  } catch (error) {
+    if (status === "cancelled" && error instanceof GoogleApiError && (error.status === 404 || error.status === 410)) return;
+    throw error;
+  }
 }
 
 /** Compensación si falla el guardado posterior en base de datos. Nunca lanza. */

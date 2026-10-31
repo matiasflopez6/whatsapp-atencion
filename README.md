@@ -5,8 +5,8 @@ Google Calendar, agenda citas y pasa la conversación a un humano. Todo corre en
 PostgreSQL como única base de datos.
 
 > Estado: fundación (bootstrap, esquema, RLS, auth, shell) + **integraciones, webhook de WhatsApp,
-> agente de IA, Google Calendar y cron de reproceso**. Tiempo real, conversaciones, citas,
-> personalización, dashboard y Railway IaC los construyen otros hilos sobre este contrato.
+> agente de IA, Google Calendar y cron de reproceso** + **panel en tiempo real (conversaciones,
+> citas, personalización, dashboard)**. Railway IaC lo construye otro hilo.
 
 ## Setup local
 
@@ -112,6 +112,20 @@ Fondo claro, grises neutros y un único acento (`--color-accent`, teal). Tokens 
 **Decisiones de versión (verificadas el 2026-10-30)**: Graph API `v26.0` (`lib/whatsapp/constants.ts`); `ai@7.0.157` y `@ai-sdk/anthropic@4.0.92` (no «AI SDK 6»; la condición de parada es `isStepCount`, `stepCountIs` queda como alias); modelo `claude-sonnet-5-5` en `lib/agent/model.ts`. No se fija `temperature`: no se pudo confirmar su aceptación con Sonnet 5.5 sin API key y el valor por defecto basta. El indicador «escribiendo…» (`typing_indicator` en el POST de «leído») se envía en mejor esfuerzo y no bloquea nada; no se ha verificado contra Meta real.
 
 **Pendiente de credenciales reales** (hasta entonces todo está cubierto por tests con mocks): `ANTHROPIC_API_KEY`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` (variables compartidas de Railway / `.env.local`) y, por organización y desde `/integraciones`: Phone number ID, WABA ID, token de System User y App Secret de Meta.
+
+## Panel en tiempo real
+
+**Tiempo real** (`lib/realtime`): los triggers de Postgres (`0002`, `0004`) hacen `pg_notify('org_events', …)` al insertar un mensaje, cambiar `bot_active`/`last_message_at` de una conversación o crear/cambiar una cita; el payload solo lleva IDs. `listener.ts` es un singleton por proceso con **su propio `pg.Client`** (LISTEN necesita una conexión de sesión: si algún día se pone PgBouncer en modo transaction, `DATABASE_URL` del servicio `web` debe ir directo a Postgres, que es el caso de la red privada de Railway). Reparte cada evento solo a los suscriptores de SU organización, reconecta con backoff exponencial, hace `SELECT 1` cada 30 s para detectar conexiones muertas y, tras reconectar, emite `resync`. `GET /api/realtime` (SSE) toma la organización **de la sesión** (401 sin ella), manda `: ping` cada 20 s y se cierra cada 10 min para que `EventSource` reconecte y se revalide la sesión. En el cliente, `RealtimeProvider` (en `app/(app)/layout.tsx`) abre UNA conexión por pestaña y `useRealtime(handler)` se suscribe a ella; al llegar un evento (o `resync`) cada vista vuelve a leer lo suyo desde `/api/*`: el cliente nunca recibe contenido por el canal en vivo.
+
+**Conversaciones** (`/conversaciones`): lista con búsqueda y filtro (Con humano = bot apagado), chat con mensajes diferenciados por remitente (Cliente / Bot / Equipo), interruptor del bot por conversación y respuesta humana. Al responder como persona el bot se **apaga antes de enviar** (así el agente descarta cualquier respuesta que tuviera en curso) y se restaura si el envío falla; el mensaje solo se guarda si Meta lo aceptó. Fuera de las 24 h desde el último mensaje del cliente WhatsApp no admite texto libre: el compositor se bloquea con un aviso (las plantillas no están implementadas).
+
+**Citas** (`/citas`): calendario mes/semana en la zona horaria del negocio (en móvil, agenda por días), con las citas del agente al instante. Cancelar una cita marca el evento de Google como `cancelled` (no lo borra, así se puede reactivar); reactivar comprueba antes con FreeBusy que el hueco siga libre; «completada» no toca Google. Si Google falla **no se cambia nada** y el diálogo ofrece, de forma explícita, cambiar solo el panel.
+
+**Personalización** (`/personalizacion`): prompt, tono, mensaje de traspaso, zona horaria, servicios (nombre, duración), horarios (varios tramos por día) e información libre del negocio (título + texto, que el agente lee con `get_business_info`). Validación con Zod en el servidor. Muestra el prompt final completo (con las reglas fijas). **Probar agente** ejecuta el mismo prompt, modelo y herramientas de lectura con la configuración **guardada**; `book_appointment` y `handoff_to_human` se simulan (`lib/agent/sandbox.ts`): no se envía nada, no se guarda ninguna conversación y no se crea ninguna cita. Límite de 12 pruebas por minuto y organización (en memoria).
+
+**Dashboard** (`/dashboard`): solo datos reales de la base. Conversaciones y mensajes de hoy (en la zona del negocio), citas de los próximos 7 días y del mes, conversaciones con el bot apagado, mediana de respuesta del bot (de `raw.inReplyTo`, 7 días), % de conversaciones sin intervención humana (30 días) y mensajes por día. Avisa de lo que falta (WhatsApp, Google, servicios/horarios, `ANTHROPIC_API_KEY`) y se refresca solo con los eventos en vivo.
+
+**Decisiones**: `appointments` y su trigger NOTIFY son la migración `0004`; el sandbox y las acciones del panel reutilizan `createAgentTools`, `sendWhatsAppMessage` y los helpers de Google de PR #2 (se añadió `setEventStatus` y `GoogleApiError` a `lib/google/calendar.ts`). Sin dependencias nuevas: el gráfico del dashboard es CSS y el modal es `<dialog>`.
 
 ## Seguridad
 
