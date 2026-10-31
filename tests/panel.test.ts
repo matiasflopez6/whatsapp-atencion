@@ -12,7 +12,7 @@ process.env.BETTER_AUTH_SECRET ??= "y".repeat(40);
 delete process.env.ANTHROPIC_API_KEY;
 
 const { eq, sql } = await import("drizzle-orm");
-const { db, closePool, pool } = await import("@/lib/db");
+const { db, closePool } = await import("@/lib/db");
 const schema = await import("@/db/schema");
 const { withTenant } = await import("@/lib/db/tenant");
 const { RealtimeListener, parseNotification } = await import("@/lib/realtime/listener");
@@ -199,10 +199,9 @@ describe("tiempo real y panel contra Postgres", () => {
     listener.subscribe(orgA, (e) => got.push(e));
     await new Promise((r) => setTimeout(r, 300));
     // Mata la sesión que hace LISTEN (la única con esa consulta de espera en esta base).
-    await pool.query(
-      `select pg_terminate_backend(pid) from pg_stat_activity
-       where pid <> pg_backend_pid() and datname = current_database() and usename = current_user and state = 'idle' and query like 'LISTEN%'`,
-    );
+    await db.execute(sql`
+      select pg_terminate_backend(pid) from pg_stat_activity
+      where pid <> pg_backend_pid() and datname = current_database() and usename = current_user and state = 'idle' and query like 'LISTEN%'`);
     await waitFor(() => got.some((e) => e.type === "resync"), 8000);
     // y vuelve a entregar eventos
     await withTenant(orgA, (tx) =>
