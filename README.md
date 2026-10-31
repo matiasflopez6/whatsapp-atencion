@@ -4,9 +4,9 @@ Plataforma SaaS multi-tenant de atención al cliente por WhatsApp: un agente de 
 Google Calendar, agenda citas y pasa la conversación a un humano. Todo corre en Railway con Railway
 PostgreSQL como única base de datos.
 
-> Estado: **fundación** (bootstrap, esquema, RLS, auth, shell). Integraciones, webhook, agente,
-> tiempo real, citas, personalización, dashboard y cron los construyen hilos posteriores sobre este
-> contrato. Las secciones de Meta, Google y Railway se completan con esos hilos.
+> Estado: fundación (bootstrap, esquema, RLS, auth, shell) + **integraciones, webhook de WhatsApp,
+> agente de IA, Google Calendar y cron de reproceso**. Tiempo real, conversaciones, citas,
+> personalización, dashboard y Railway IaC los construyen otros hilos sobre este contrato.
 
 ## Setup local
 
@@ -25,7 +25,7 @@ Usuarios del seed (contraseña `SEED_PASSWORD`, por defecto `seed-password-123`)
 `owner@clinica-sonrisa.test` y `owner@barberia-norte.test`.
 
 Scripts: `dev`, `build`, `build:scripts`, `start`, `db:generate`, `db:migrate`, `db:seed`,
-`db:verify` (comprueba aislamiento RLS y triggers NOTIFY), `cron:reprocess` (pendiente), `typecheck`, `lint`.
+`db:verify` (comprueba aislamiento RLS y triggers NOTIFY), `cron:reprocess` (reprocesa `webhook_events`; en Railway corre el bundle de `build:scripts`), `test` (unitarios + flujo completo con Postgres local y Meta/Google/modelo simulados), `typecheck`, `lint`.
 
 ## Convenciones (léelas antes de añadir código)
 
@@ -34,7 +34,7 @@ Scripts: `dev`, `build`, `build:scripts`, `start`, `db:generate`, `db:migrate`, 
 ```
 app/(marketing)  landing        app/(auth)  login, signup, actions.ts (Server Actions de auth)
 app/(app)        panel autenticado (layout con sidebar; el layout llama a requireSession())
-app/api          auth/[...all], health, (webhooks, realtime, google: otros hilos)
+app/api          auth/[...all], auth/google/{start,callback}, health, webhooks/whatsapp  (realtime: otro hilo)
 db/schema/*.ts   esquema Drizzle (auth.ts = tablas de Better Auth)   db/types.ts  tipos inferidos
 db/migrations    SQL generado + migraciones custom (RLS, roles, triggers)
 db/seed.ts, db/verify-isolation.ts
@@ -43,6 +43,10 @@ lib/db/index.ts  pool + drizzle base (NO importar fuera de lib/db, lib/auth.ts, 
 lib/db/tenant.ts withTenant()      lib/db/system.ts  operaciones de sistema documentadas
 lib/auth.ts      Better Auth       lib/session.ts    getSession() / requireSession()
 components/ui    Button, Field/Input, Badge, PageHeader, Panel, EmptyState
+lib/whatsapp     client (envío, test de conexión), signature (HMAC), payload, ingest (POST→inbox), process (inbox→agente→respuesta)
+lib/agent        model.ts (ANTHROPIC_MODEL), prompt.ts, tools.ts (4 herramientas), run.ts (generateText)
+lib/google       oauth, calendar (FreeBusy/eventos/calendarios), availability (slots), time (zonas horarias)
+scripts/reprocess-webhooks.ts   cron; tests/   node:test con tsx
 ```
 
 ### Datos: `withTenant()`
@@ -74,7 +78,7 @@ const rows = await withTenant(organizationId, (tx) => tx.select().from(contacts)
 
 ### Secretos
 
-Tokens y secretos de terceros se guardan con `encrypt()` (AES-256-GCM, formato `v1.iv.tag.data`) y se leen con `decrypt()`. Variables siempre vía `getEnv()`; las nuevas se añaden a `lib/env.ts` y `.env.example`. `ANTHROPIC_API_KEY` y `GOOGLE_*` son hoy opcionales: el hilo que las use debe volverlas obligatorias.
+Tokens y secretos de terceros se guardan con `encrypt()` (AES-256-GCM, formato `v1.iv.tag.data`) y se leen con `decrypt()`. Variables siempre vía `getEnv()`; las nuevas se añaden a `lib/env.ts` y `.env.example`. `ANTHROPIC_API_KEY` y `GOOGLE_*` siguen siendo opcionales **a propósito** (ver «WhatsApp, agente y Google Calendar»): sin ellas la app arranca, `/integraciones` avisa de qué falta y el agente pasa la conversación a una persona en lugar de inventar. Las credenciales de Meta (token, App Secret) son por organización y se guardan cifradas desde `/integraciones`, no como variables de entorno.
 
 ### UI
 
@@ -90,6 +94,24 @@ Fondo claro, grises neutros y un único acento (`--color-accent`, teal). Tokens 
 - **`server-only`** (dependencia mínima oficial de React) protege `lib/session.ts` de importarse en el cliente.
 - Fuente: pila del sistema (sin dependencias de fuentes ni peticiones a terceros en build).
 - Pendiente para otros hilos: AI SDK (hoy `ai` 7.x / `@ai-sdk/anthropic` 4.x frente a "AI SDK 6" del prompt), `GRAPH_API_VERSION`, Railway IaC.
+
+## WhatsApp, agente y Google Calendar
+
+**Webhook** (`/api/webhooks/whatsapp`):
+- `GET`: verificación; el `hub.verify_token` (`{slug}:{secreto}`, se genera al guardar las credenciales y se muestra en `/integraciones`) identifica al negocio.
+- `POST`: lee el body crudo, resuelve la organización por `phone_number_id`, valida `X-Hub-Signature-256` (HMAC-SHA256, comparación en tiempo constante) con el **App Secret de esa organización**, guarda un `webhook_events` por mensaje (idempotente por `message.id`) y responde 200; el procesamiento corre en `after()`. Firma inválida → 401; error al guardar → 500 (Meta reintenta). Un número desconocido se ignora con 200 y log.
+- Los `statuses` (entregado/leído) se ignoran en v1. Los mensajes no textuales llegan al agente como marcador y este pide que escriban.
+- **mTLS de Meta**: el TLS termina en el edge de Railway; la app no valida certificados de cliente y la autenticidad la da el HMAC. Si algún día se pone un proxy propio con `ssl_verify_client`, debe confiar en la CA `meta-outbound-api-ca-2025-12.pem` (ver `docs/decisions.md` del hilo de Railway, PR #1).
+
+**Inbox y reproceso**: `webhook_events` (`pending → processing → done | failed`). `after()` reclama el evento; si el proceso muere (redeploy/SIGTERM) o falla, `pnpm cron:reprocess` (cada 5 min en Railway) reclama con `FOR UPDATE SKIP LOCKED` los `pending` de más de 30 s y los `processing` con bloqueo de más de 5 min. Máximo 5 intentos; al agotarlos el evento queda `failed`, el bot se apaga en esa conversación y se avisa al cliente con el mensaje de traspaso. Cada respuesta del bot guarda `raw.inReplyTo`, así un reintento no duplica una respuesta ya enviada. Si entra un mensaje nuevo mientras el agente piensa, se descarta la respuesta vieja (responde el turno más reciente con todo el contexto), salvo que ese turno ya haya agendado o traspasado. La exclusión es **en proceso** (`lib/mutex.ts`): Railway corre una instancia de `web`.
+
+**Agente** (`lib/agent`): `generateText` de AI SDK con `anthropic(ANTHROPIC_MODEL)` y `stopWhen: isStepCount(6)`. El system prompt (`prompt.ts`) = prompt editable de `agent_configs` + tono + servicios + horarios + hora actual + **reglas fijas** que el dueño no puede quitar (no ofrecer horarios que no salgan de `check_availability`; no confirmar citas hasta que `book_appointment` devuelva `confirmed: true`). Herramientas: `check_availability` (FreeBusy real → hasta 3 horarios repartidos), `book_appointment` (revalida horario y FreeBusy, crea el evento en Google, guarda la cita y deshace el evento si falla el guardado; idempotente; una reserva a la vez por organización), `get_business_info` y `handoff_to_human` (apaga `bot_active` y guarda `handoff_reason`). Si Google falla o está desconectado, la herramienta devuelve `calendar_unavailable` y el agente ofrece pasar con una persona: nunca se asume que algo esté libre.
+
+**Google Calendar**: OAuth 2.0 con `fetch` (sin `googleapis`, para no añadir una dependencia enorme por tres endpoints). Scope `calendar`, `access_type=offline`, `prompt=consent`, `state` firmado (organización + nonce + caducidad) y cookie `httpOnly`; el callback exige que la organización del `state` sea la de la sesión. Redirect URI: `${APP_URL}/api/auth/google/callback` (la ruta estática gana al catch-all de Better Auth; verificado). Tokens cifrados; `invalid_grant` marca la integración «Desconectada» en `/integraciones`. Tras conectar se usa el calendario principal y el dueño puede elegir otro. Con la app de Google en modo *Testing* los refresh tokens caducan a los 7 días. Los redirects de las rutas de OAuth usan `APP_URL`, no `request.url` (en el standalone con `HOSTNAME=0.0.0.0` este último trae el host interno).
+
+**Decisiones de versión (verificadas el 2026-10-30)**: Graph API `v26.0` (`lib/whatsapp/constants.ts`); `ai@7.0.157` y `@ai-sdk/anthropic@4.0.92` (no «AI SDK 6»; la condición de parada es `isStepCount`, `stepCountIs` queda como alias); modelo `claude-sonnet-5-5` en `lib/agent/model.ts`. No se fija `temperature`: no se pudo confirmar su aceptación con Sonnet 5.5 sin API key y el valor por defecto basta. El indicador «escribiendo…» (`typing_indicator` en el POST de «leído») se envía en mejor esfuerzo y no bloquea nada; no se ha verificado contra Meta real.
+
+**Pendiente de credenciales reales** (hasta entonces todo está cubierto por tests con mocks): `ANTHROPIC_API_KEY`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` (variables compartidas de Railway / `.env.local`) y, por organización y desde `/integraciones`: Phone number ID, WABA ID, token de System User y App Secret de Meta.
 
 ## Seguridad
 

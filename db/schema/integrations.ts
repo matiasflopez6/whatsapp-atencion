@@ -23,5 +23,9 @@ export const googleCalendarConfigs = pgTable("google_calendar_configs", {
   refreshTokenEncrypted: text("refresh_token_encrypted").notNull(),
   accessTokenEncrypted: text("access_token_encrypted"),
   tokenExpiresAt: timestamp("token_expires_at", { withTimezone: true }),
+  accountEmail: text("account_email"),
+  // "disconnected" cuando Google responde invalid_grant (token revocado/caducado): el agente no ofrece horarios.
+  status: text("status", { enum: ["connected", "disconnected"] }).notNull().default("connected"),
+  lastError: text("last_error"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
 });

@@ -23,7 +23,7 @@ export default defineConfig([
     },
   },
   {
-    files: ["lib/db/**", "lib/auth.ts", "db/seed.ts", "db/verify-isolation.ts", "scripts/**"],
+    files: ["lib/db/**", "lib/auth.ts", "db/seed.ts", "db/verify-isolation.ts", "scripts/**", "tests/**"],
     rules: { "no-restricted-imports": "off" },
   },
 ]);
