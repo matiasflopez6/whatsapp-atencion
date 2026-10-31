@@ -21,16 +21,35 @@ function createPool(): Pool {
   return pool;
 }
 
-// En dev, el singleton sobrevive al hot reload.
-export const pool: Pool = (globalForDb.__pgPool ??= createPool());
+/**
+ * Perezoso a propósito: `next build` importa los módulos de las rutas al recolectar datos de página y
+ * en Railway el build no tiene DATABASE_URL. La conexión se crea en el primer uso real.
+ */
+function getPool(): Pool {
+  // En dev, el singleton sobrevive al hot reload.
+  return (globalForDb.__pgPool ??= createPool());
+}
 
-export const db = drizzle(pool, { schema });
+let drizzleDb: ReturnType<typeof createDb> | undefined;
 
-export type Database = typeof db;
+function createDb() {
+  return drizzle(getPool(), { schema });
+}
+
+export type Database = ReturnType<typeof createDb>;
 export type Tx = Parameters<Parameters<Database["transaction"]>[0]>[0];
+
+export const db: Database = new Proxy({} as Database, {
+  get(_target, prop) {
+    const instance = (drizzleDb ??= createDb());
+    const value = Reflect.get(instance, prop, instance);
+    return typeof value === "function" ? value.bind(instance) : value;
+  },
+});
 
 /** Cierra el pool (SIGTERM en servicios y scripts). */
 export async function closePool(): Promise<void> {
-  await pool.end();
+  await globalForDb.__pgPool?.end();
   globalForDb.__pgPool = undefined;
+  drizzleDb = undefined;
 }

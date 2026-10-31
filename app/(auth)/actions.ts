@@ -4,7 +4,7 @@ import { APIError } from "better-auth/api";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { auth } from "@/lib/auth";
+import { getAuth } from "@/lib/auth";
 
 export type AuthFormState = { error?: string; fields?: Record<string, string> };
 
@@ -30,7 +30,7 @@ export async function loginAction(_prev: AuthFormState, formData: FormData): Pro
   if (!parsed.success) return { error: firstIssue(parsed.error), fields: { email: input.email ?? "" } };
 
   try {
-    await auth.api.signInEmail({ body: parsed.data, headers: await headers() });
+    await getAuth().api.signInEmail({ body: parsed.data, headers: await headers() });
   } catch (error) {
     if (error instanceof APIError) return { error: "Email o contraseña incorrectos", fields: { email: parsed.data.email } };
     throw error;
@@ -46,7 +46,7 @@ export async function signupAction(_prev: AuthFormState, formData: FormData): Pr
 
   try {
     // `organizationName` no es un campo estándar de Better Auth: lo lee el hook user.create.after.
-    await auth.api.signUpEmail({
+    await getAuth().api.signUpEmail({
       body: parsed.data as { name: string; email: string; password: string },
       headers: await headers(),
     });
@@ -61,6 +61,6 @@ export async function signupAction(_prev: AuthFormState, formData: FormData): Pr
 }
 
 export async function logoutAction(): Promise<void> {
-  await auth.api.signOut({ headers: await headers() });
+  await getAuth().api.signOut({ headers: await headers() });
   redirect("/login");
 }

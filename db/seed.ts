@@ -4,7 +4,7 @@
  * Idempotente. No corre en producción. No crea credenciales de WhatsApp ni de Google.
  */
 import { eq } from "drizzle-orm";
-import { auth } from "@/lib/auth";
+import { getAuth } from "@/lib/auth";
 import { closePool, db } from "@/lib/db";
 import { withTenant } from "@/lib/db/tenant";
 import { getUserOrganization } from "@/lib/db/system";
@@ -51,7 +51,7 @@ async function main() {
   for (const seed of SEEDS) {
     const [existing] = await db.select().from(user).where(eq(user.email, seed.email)).limit(1);
     if (!existing) {
-      await auth.api.signUpEmail({
+      await getAuth().api.signUpEmail({
         body: { name: seed.name, email: seed.email, password, organizationName: seed.organizationName } as {
           name: string;
           email: string;
