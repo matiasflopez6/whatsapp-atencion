@@ -44,6 +44,12 @@ export default function LandingPage() {
           </div>
         ))}
       </section>
+      <footer className="mt-auto flex h-16 items-center justify-between text-sm text-ink-3">
+        <span>Atención WhatsApp</span>
+        <Link href="/privacidad" className="hover:text-ink">
+          Política de privacidad
+        </Link>
+      </footer>
     </div>
   );
 }
