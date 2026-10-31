@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Logo } from "@/components/logo";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { buttonClass } from "@/components/ui/button";
 
 export const metadata: Metadata = {
@@ -26,9 +27,12 @@ export default function PrivacyPage() {
         <Link href="/" aria-label="Inicio">
           <Logo />
         </Link>
-        <Link href="/login" className={buttonClass("ghost")}>
-          Iniciar sesión
-        </Link>
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <Link href="/login" className={buttonClass("ghost")}>
+            Iniciar sesión
+          </Link>
+        </div>
       </header>
 
       <h1 className="mt-8 text-3xl font-semibold tracking-tight">Política de privacidad</h1>

@@ -54,7 +54,7 @@ export function AppointmentDialog({ appointment, timeZone, onClose, onStatusChan
         if (e.target === ref.current) onClose(); // clic en el fondo
       }}
       aria-labelledby="appointment-title"
-      className="m-auto w-[min(32rem,calc(100vw-2rem))] rounded-panel border border-line bg-surface p-0 text-ink shadow-xl backdrop:bg-black/30"
+      className="m-auto w-[min(32rem,calc(100vw-2rem))] rounded-panel border border-line bg-surface p-0 text-ink shadow-xl backdrop:bg-black/50"
     >
       {a ? (
         <div className="space-y-5 p-5">

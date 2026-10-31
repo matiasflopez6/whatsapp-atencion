@@ -4,7 +4,7 @@ import type { DaySeries } from "@/lib/panel/dashboard";
 const SERIES = [
   { key: "contact", label: "Clientes", className: "bg-ink-4" },
   { key: "bot", label: "Bot", className: "bg-accent" },
-  { key: "human", label: "Equipo", className: "bg-accent-ink" },
+  { key: "human", label: "Equipo", className: "bg-ink" },
 ] as const;
 
 const shortDay = (key: string) => {

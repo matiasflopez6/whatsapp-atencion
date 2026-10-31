@@ -3,10 +3,10 @@ import { cn } from "@/lib/utils";
 type Variant = "primary" | "secondary" | "ghost" | "danger";
 
 const variants: Record<Variant, string> = {
-  primary: "bg-accent text-white hover:bg-accent-hover disabled:bg-ink-4",
+  primary: "bg-accent text-on-accent hover:bg-accent-hover disabled:bg-ink-4",
   secondary: "bg-surface text-ink border border-line-strong hover:bg-subtle disabled:text-ink-4",
   ghost: "text-ink-2 hover:bg-subtle disabled:text-ink-4",
-  danger: "bg-danger text-white hover:opacity-90 disabled:opacity-50",
+  danger: "bg-danger text-on-danger hover:opacity-90 disabled:opacity-50",
 };
 
 export function buttonClass(variant: Variant = "primary", className?: string) {

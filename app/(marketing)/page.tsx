@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { CalendarCheck, ChatsCircle, UserSwitch } from "@phosphor-icons/react/dist/ssr";
 import { Logo } from "@/components/logo";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { buttonClass } from "@/components/ui/button";
 
 const POINTS = [
@@ -15,6 +16,7 @@ export default function LandingPage() {
       <header className="flex h-16 items-center justify-between">
         <Logo />
         <nav className="flex items-center gap-2">
+          <ThemeToggle className="mr-1" />
           <Link href="/login" className={buttonClass("ghost")}>
             Iniciar sesión
           </Link>

@@ -6,6 +6,7 @@ import { useState } from "react";
 import { List, SignOut, X } from "@phosphor-icons/react";
 import { Logo } from "@/components/logo";
 import { NAV_ITEMS } from "@/components/nav";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -47,6 +48,9 @@ export function Sidebar({ organizationName, userName, userEmail, logoutAction }:
       <div className="px-2.5 pb-2">
         <p className="truncate text-sm font-medium">{userName}</p>
         <p className="truncate text-xs text-ink-3">{userEmail}</p>
+      </div>
+      <div className="px-2.5 pb-2">
+        <ThemeToggle />
       </div>
       <form action={logoutAction}>
         <button
@@ -92,7 +96,7 @@ export function Sidebar({ organizationName, userName, userEmail, logoutAction }:
       </div>
       {open ? (
         <div className="fixed inset-0 z-30 md:hidden">
-          <div className="absolute inset-0 bg-black/30" onClick={() => setOpen(false)} aria-hidden />
+          <div className="absolute inset-0 bg-black/50" onClick={() => setOpen(false)} aria-hidden />
           <aside className="absolute inset-y-0 left-0 flex w-64 flex-col bg-surface shadow-xl">
             <button
               type="button"
